@@ -32,6 +32,9 @@ private:
 	
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* AttackAction;
+
+	UPROPERTY()
+	UStaticMeshComponent* SamuraiMeshComp;
 	
 	UPROPERTY()
 	class APlayerControllerClass* PlayerController;

@@ -19,6 +19,8 @@ void AMainCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	SamuraiMeshComp = FindComponentByClass<UStaticMeshComponent>();
+	
 	PlayerController = Cast<APlayerControllerClass>(GetController());
 	if (PlayerController)
 	{
@@ -79,12 +81,13 @@ void AMainCharacter::Attack(const FInputActionValue& Value)
 	// Perform the collision check
 	TArray<FHitResult> HitResults;
 	FQuat Rotation = GetActorRotation().Quaternion();
-	FVector Start = GetActorLocation();
+	FVector Start = SamuraiMeshComp->GetSocketLocation("AttackPoint");
 	FVector End = Start + (Rotation * FVector::ForwardVector * AttackRange); // Adjust as needed
 
 	PlayerController->UpdateRageUI(RageMeter/MaxRage);
 	
 	DrawDebugSphere(GetWorld(), Start, AttackRange, 12, FColor::Red, false, 2.0f);
+
 	
 	// Perform a sphere trace to detect enemies
 	if (GetWorld()->SweepMultiByChannel(HitResults, Start, End, Rotation, ECC_GameTraceChannel2, CollisionShape))
