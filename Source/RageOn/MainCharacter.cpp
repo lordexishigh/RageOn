@@ -42,21 +42,23 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMainCharacter::Move);
 		EnhancedInputComponent->BindAction(TurnAction, ETriggerEvent::Triggered, this, &AMainCharacter::TurnCamera);
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &AMainCharacter::Attack);
+		EnhancedInputComponent->BindAction(RollAction, ETriggerEvent::Started, this, &AMainCharacter::Roll);
+		EnhancedInputComponent->BindAction(MeditateAction, ETriggerEvent::Started, this, &AMainCharacter::Meditate);
+		EnhancedInputComponent->BindAction(MeditateAction, ETriggerEvent::Completed, this, &AMainCharacter::Meditate);
 	};
 }
 
 void AMainCharacter::Move(const FInputActionValue& Value)
 {
+	if (IsMeditating)
+	{
+		return;
+	}
+	
 	FVector2D MovementVector = Value.Get<FVector2D>();
-    
-	FRotator Rotation = GetMesh()->GetRelativeRotation();
-
-	const FRotator YawRotation(0, Rotation.Yaw, 0);
-	const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-
-	AddMovementInput(RightDirection, MovementVector.Y * 50);
-	AddMovementInput(ForwardDirection, MovementVector.X  * 50);
+	
+	AddMovementInput(GetActorRightVector(), MovementVector.Y  * 50);
+	AddMovementInput(GetActorForwardVector(), MovementVector.X * 50);
 }
 
 
@@ -73,6 +75,20 @@ void AMainCharacter::TurnCamera(const FInputActionValue& Value)
 
 void AMainCharacter::Attack(const FInputActionValue& Value)
 {
+	if (IsMeditating)
+	{
+		return;
+	}
+	
+	const float Time = GetWorld()->GetTimeSeconds();
+	
+	if (AttackTimer > Time)
+	{
+		return;
+	}
+
+	AttackTimer = Time + AttackRate;
+	
 	RageMeter += RagePerAttack;
 	RageMeter = FMath::Clamp(RageMeter, 0.0f, MaxRage);
 
@@ -101,5 +117,46 @@ void AMainCharacter::Attack(const FInputActionValue& Value)
 			}
 		}
 	}
+}
+
+void AMainCharacter::Roll(const FInputActionValue& Value)
+{
+	FVector ForwardDirection = GetActorForwardVector();
+
+	// Set the roll strength (how fast the character should roll)
+	float RollStrength = 600.0f;  // Adjust this value as needed
+
+	// Launch the character forward with the roll strength
+	LaunchCharacter(ForwardDirection * RollStrength, true, true);
+}
+
+void AMainCharacter::Meditate(const FInputActionValue& Value)
+{
+	if(IsAttacking)
+	{
+		return;
+	}
+
+	IsMeditating = !IsMeditating;
+
+	if(IsMeditating)
+	{
+		GetWorld()->GetTimerManager().SetTimer(MeditationTimerHandle, this, &AMainCharacter::MedicationActivated, 1, false);
+	}
+	else
+	{
+		GetWorld()->GetTimerManager().ClearTimer(MeditationTimerHandle);
+	}
+}
+
+void AMainCharacter::MedicationActivated()
+{
+	GetWorld()->GetTimerManager().SetTimer(MeditationTimerHandle, this, &AMainCharacter::DecreaseRage, 0.1f, true);
+}
+
+void AMainCharacter::DecreaseRage()
+{
+	RageMeter -= RageDecay;
+	PlayerController->UpdateRageUI(RageMeter/MaxRage);
 }
 
